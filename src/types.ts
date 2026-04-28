@@ -62,6 +62,17 @@ export interface VikunjaUser {
   updated: string;
 }
 
+export type VikunjaPermission = 0 | 1 | 2;
+
+export interface VikunjaUserWithPermission extends VikunjaUser {
+  email?: string;
+  permission: VikunjaPermission;
+}
+
+export interface VikunjaProjectUserResult extends VikunjaUserWithPermission {
+  is_owner: boolean;
+}
+
 export interface VikunjaView {
   id: number;
   title: string;

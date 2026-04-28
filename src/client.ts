@@ -1,4 +1,11 @@
-import type { VikunjaProject, VikunjaTask, VikunjaLabel, VikunjaView } from './types.js';
+import type { 
+    VikunjaProject,
+    VikunjaTask,
+    VikunjaLabel,
+    VikunjaView,
+    VikunjaUserWithPermission,
+    VikunjaProjectUserResult,
+} from './types.js';
 
 export class VikunjaClient {
   private baseUrl: string;
@@ -117,5 +124,31 @@ export class VikunjaClient {
 
   async removeLabelFromTask(taskId: number, labelId: number): Promise<void> {
     await this.request<{ message: string }>('DELETE', `/tasks/${taskId}/labels/${labelId}`);
+  }
+
+  async listProjectUsers(projectId: number): Promise<VikunjaUserWithPermission[]> {
+    return this.request('GET', `/projects/${projectId}/users`);
+  }
+
+  async listProjectUsersWithOwner(projectId: number): Promise<VikunjaProjectUserResult[]> {
+    const [project, sharedUsers] = await Promise.all([
+      this.getProject(projectId),
+      this.listProjectUsers(projectId),
+    ]);
+
+    const users: VikunjaProjectUserResult[] = sharedUsers.map((user) => ({
+      ...user,
+      is_owner: project.owner?.id === user.id,
+    }));
+
+    if (project.owner && !users.some((user) => user.id === project.owner!.id)) {
+      users.unshift({
+        ...project.owner,
+        permission: 2,
+        is_owner: true,
+      });
+    }
+
+    return users;
   }
 }

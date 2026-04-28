@@ -1,6 +1,18 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { VikunjaClient } from '../client.js';
+function formatPermission(permission: number): string {
+  switch (permission) {
+    case 0:
+      return 'read';
+    case 1:
+      return 'write';
+    case 2:
+      return 'admin';
+    default:
+      return `unknown (${permission})`;
+  }
+}
 
 export function projectTools(server: McpServer, client: VikunjaClient): void {
   server.registerTool('vikunja_list_projects', {
@@ -58,6 +70,36 @@ export function projectTools(server: McpServer, client: VikunjaClient): void {
     await client.deleteProject(id);
     return {
       content: [{ type: 'text', text: `Deleted project #${id}` }],
+    };
+  });
+
+  server.registerTool('vikunja_list_project_users', {
+    description: 'List users who have access to a project, including directly shared users and the project owner',
+    inputSchema: {
+      project_id: z.number().describe('Project ID'),
+    },
+  }, async ({ project_id }) => {
+    const users = await client.listProjectUsersWithOwner(project_id);
+
+    if (!users.length) {
+      return {
+        content: [{ type: 'text', text: `No users found for project #${project_id}.` }],
+      };
+    }
+
+    const lines = users.map((user) => {
+      const displayName = user.name || user.username;
+      const owner = user.is_owner ? ' owner' : '';
+      const permission = formatPermission(user.permission);
+
+      return `[${user.id}] ${displayName} (@${user.username}) - ${permission}${owner}`;
+    }).join('\n');
+
+    return {
+      content: [{
+        type: 'text',
+        text: `${users.length} user(s) with access to project #${project_id}:\n${lines}`,
+      }],
     };
   });
 }
