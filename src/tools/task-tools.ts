@@ -76,13 +76,26 @@ export function taskTools(server: McpServer, client: VikunjaClient): void {
       priority: z.number().optional().describe('Priority: 0=none, 1=low, 2=medium, 3=high, 4=urgent'),
       due_date: z.string().optional().describe('Due date in ISO format (e.g., "2026-03-15T00:00:00Z")'),
       hex_color: z.string().optional().describe('Hex color code'),
+      assignee_ids: z.array(z.number()).optional()
+        .describe('User IDs to assign to this task. Users must already have access to the project.'),
     },
-  }, async ({ project_id, ...data }) => {
-    const task = await client.createTask(project_id, data);
-    return {
-      content: [{ type: 'text', text: `Created task [${task.id}] "${task.title}" in project #${project_id}` }],
-    };
-  });
+  }, async ({ project_id, assignee_ids, ...data }) => {
+      const task = await client.createTask(project_id, {
+        ...data,
+        assignees: assignee_ids?.map(id => ({ id })),
+      });
+
+      const assigneeText = task.assignees?.length
+        ? ` Assigned to: ${task.assignees.map(u => u.username || u.name || `#${u.id}`).join(', ')}.`
+        : '';
+
+      return {
+        content: [{
+          type: 'text',
+          text: `Created task [${task.id}] "${task.title}" in project #${project_id}.${assigneeText}`,
+        }],
+      };
+    });
 
   server.registerTool('vikunja_update_task', {
     description: 'Update an existing task',
@@ -94,13 +107,26 @@ export function taskTools(server: McpServer, client: VikunjaClient): void {
       priority: z.number().optional().describe('Priority: 0=none, 1=low, 2=medium, 3=high, 4=urgent'),
       due_date: z.string().optional().describe('Due date in ISO format'),
       hex_color: z.string().optional().describe('Hex color code'),
+      assignee_ids: z.array(z.number()).optional()
+        .describe('Replace task assignees with these user IDs. Users must already have access to the project. Pass an empty array to unassign everyone.'),
     },
-  }, async ({ id, ...data }) => {
-    const task = await client.updateTask(id, data);
-    return {
-      content: [{ type: 'text', text: `Updated task [${task.id}] "${task.title}"` }],
-    };
-  });
+  }, async ({ id, assignee_ids, ...data }) => {
+      const task = await client.updateTask(id, {
+        ...data,
+        assignees: assignee_ids?.map(id => ({ id })),
+      });
+
+      const assigneeText = task.assignees?.length
+        ? ` Assigned to: ${task.assignees.map(u => u.username || u.name || `#${u.id}`).join(', ')}.`
+        : assignee_ids ? ' No assignees.' : '';
+
+      return {
+        content: [{
+          type: 'text',
+          text: `Updated task [${task.id}] "${task.title}".${assigneeText}`,
+        }],
+      };
+    });
 
   server.registerTool('vikunja_complete_task', {
     description: 'Mark a task as completed',
@@ -136,12 +162,18 @@ export function taskTools(server: McpServer, client: VikunjaClient): void {
         done: z.boolean().optional().describe('Mark as completed'),
         priority: z.number().optional().describe('Priority (0-4)'),
         due_date: z.string().optional().describe('Due date in ISO format'),
+        assignee_ids: z.array(z.number()).optional()
+            .describe('User IDs to assign to this task'),
       })).describe('Array of tasks to create'),
     },
   }, async ({ project_id, tasks }) => {
     const results: string[] = [];
     for (const taskData of tasks) {
-      const task = await client.createTask(project_id, taskData);
+      const { assignee_ids, ...rest } = taskData;
+      const task = await client.createTask(project_id, {
+        ...rest,
+        assignees: assignee_ids?.map(id => ({ id })),
+      });
       results.push(`[${task.id}] ${task.title}`);
     }
     return {

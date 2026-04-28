@@ -97,11 +97,27 @@ export class VikunjaClient {
     return this.request<VikunjaTask>('GET', `/tasks/${id}`);
   }
 
-  async createTask(projectId: number, data: { title: string; description?: string; done?: boolean; priority?: number; due_date?: string; hex_color?: string }): Promise<VikunjaTask> {
+  async createTask(projectId: number, data: {
+    title: string;
+    description?: string;
+    done?: boolean;
+    priority?: number;
+    due_date?: string;
+    hex_color?: string;
+    assignees?: Array<{ id: number }>;
+  }): Promise<VikunjaTask> {
     return this.request<VikunjaTask>('PUT', `/projects/${projectId}/tasks`, data);
   }
 
-  async updateTask(id: number, data: Partial<{ title: string; description: string; done: boolean; priority: number; due_date: string; hex_color: string }>): Promise<VikunjaTask> {
+  async updateTask(id: number, data: Partial<{
+    title: string;
+    description: string;
+    done: boolean;
+    priority: number;
+    due_date: string;
+    hex_color: string
+    assignees: Array<{ id: number }>;
+  }>): Promise<VikunjaTask> {
     return this.request<VikunjaTask>('POST', `/tasks/${id}`, data);
   }
 
