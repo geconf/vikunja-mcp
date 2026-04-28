@@ -115,10 +115,22 @@ export class VikunjaClient {
     done: boolean;
     priority: number;
     due_date: string;
-    hex_color: string
-    assignees: Array<{ id: number }>;
+    hex_color: string;
   }>): Promise<VikunjaTask> {
-    return this.request<VikunjaTask>('POST', `/tasks/${id}`, data);
+    const existing = await this.getTask(id);
+
+    const updatedTask = {
+      ...existing,
+      ...data,
+    };
+
+    return this.request('POST', `/tasks/${id}`, updatedTask);
+  }
+
+  async setTaskAssignees(taskId: number, assigneeIds: number[]): Promise<unknown> {
+    return this.request('POST', `/tasks/${taskId}/assignees/bulk`, {
+      assignees: assigneeIds.map(id => ({ id })),
+    });
   }
 
   async deleteTask(id: number): Promise<void> {

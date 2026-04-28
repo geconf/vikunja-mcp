@@ -111,14 +111,16 @@ export function taskTools(server: McpServer, client: VikunjaClient): void {
         .describe('Replace task assignees with these user IDs. Users must already have access to the project. Pass an empty array to unassign everyone.'),
     },
   }, async ({ id, assignee_ids, ...data }) => {
-      const task = await client.updateTask(id, {
-        ...data,
-        assignees: assignee_ids?.map(id => ({ id })),
-      });
+      let task = await client.updateTask(id, data);
+
+      if (assignee_ids !== undefined) {
+        await client.setTaskAssignees(id, assignee_ids);
+        task = await client.getTask(id);
+      }
 
       const assigneeText = task.assignees?.length
         ? ` Assigned to: ${task.assignees.map(u => u.username || u.name || `#${u.id}`).join(', ')}.`
-        : assignee_ids ? ' No assignees.' : '';
+        : assignee_ids !== undefined ? ' No assignees.' : '';
 
       return {
         content: [{
